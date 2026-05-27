@@ -6,6 +6,34 @@ from datetime import datetime
 from .db import get_conn
 
 
+def _is_tool_failure(content: str) -> bool:
+    """结构化判定工具调用是否失败。"""
+    if not content:
+        return False
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        # 非 JSON 输出，回退到保守的字符串匹配
+        return "error" in content.lower() or "fail" in content.lower()
+
+    if not isinstance(data, dict):
+        return False
+
+    # 显式 success: false
+    if data.get("success") is False:
+        return True
+
+    # 有 error 字段且没有 success: true
+    if "error" in data and data.get("success") is not True:
+        return True
+
+    # 终端工具：exit_code != 0
+    if "exit_code" in data and data["exit_code"] != 0:
+        return True
+
+    return False
+
+
 def compute_daily_stats(agent_id: str, date: str | None = None) -> dict:
     """计算指定日期的智能体状态统计"""
     if date is None:
@@ -40,7 +68,7 @@ def compute_daily_stats(agent_id: str, date: str | None = None) -> dict:
                 if role == "tool":
                     tool_count += 1
                     content = payload.get("content", "")
-                    if "error" in content.lower() or "fail" in content.lower():
+                    if _is_tool_failure(content):
                         tool_fail += 1
                     else:
                         tool_success += 1

@@ -4,4 +4,4 @@ set -e
 cd /data/projects/genark/engine
 # 加载环境变量
 set -a; source .env; set +a
-exec uv run python -m genark.cli collect --agent guyuan >> data/collect.log 2>&1
+exec /home/hermes/.local/bin/uv run python -m genark.cli collect --agent guyuan >> data/collect.log 2>&1

@@ -3,4 +3,4 @@
 set -e
 cd /data/projects/genark/engine
 set -a; source .env; set +a
-exec uv run python -m genark.cli daily --agent guyuan >> data/report.log 2>&1
+exec /home/hermes/.local/bin/uv run python -m genark.cli daily --agent guyuan >> data/report.log 2>&1

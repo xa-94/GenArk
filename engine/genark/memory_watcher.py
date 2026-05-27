@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+from datetime import datetime
 
 from .config import agent_memories_dir, agent_skills_dir
 from .db import get_conn, _open_conn
@@ -53,10 +54,14 @@ def watch_memories(agent_id: str, conn=None) -> list[str]:
                 "last_entry": entries[-1][:100] if entries else "",
             }
 
+            file_mtime = os.path.getmtime(filepath)
+            ts = datetime.fromtimestamp(file_mtime).isoformat()
+
             append_event(
                 agent_id=agent_id,
                 event_type="memory_change",
                 payload=snapshot,
+                timestamp=ts,
                 source_path=filepath,
                 conn=conn,
             )
@@ -112,10 +117,14 @@ def watch_skills(agent_id: str, conn=None) -> dict:
             },
         }
 
+        file_mtime = os.path.getmtime(usage_file)
+        ts = datetime.fromtimestamp(file_mtime).isoformat()
+
         append_event(
             agent_id=agent_id,
             event_type="skill_change",
             payload=snapshot,
+            timestamp=ts,
             source_path=usage_file,
             conn=conn,
         )
