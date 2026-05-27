@@ -23,8 +23,8 @@ def _is_tool_failure(content: str) -> bool:
     if data.get("success") is False:
         return True
 
-    # 有 error 字段且没有 success: true
-    if "error" in data and data.get("success") is not True:
+    # 有 error 字段且值非空（排除 "error": null），且没有 success: true
+    if data.get("error") and data.get("success") is not True:
         return True
 
     # 终端工具：exit_code != 0
