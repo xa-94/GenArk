@@ -3,11 +3,26 @@
 import json
 import os
 import glob
+import shutil
 from datetime import datetime
 
-from .config import agent_sessions_dir, COLLECT_FILE_GLOB
+from .config import agent_sessions_dir, COLLECT_FILE_GLOB, COLLECT_SCHEMA_VERSION, STORAGE_MIN_FREE_BYTES, DATA_DIR
 from .db import get_conn, _open_conn
 from .event_store import append_event
+
+
+def check_storage(agent_id: str | None = None) -> dict:
+    """A3: 检查存储空间，返回 {ok, free_bytes, threshold}"""
+    usage = shutil.disk_usage(str(DATA_DIR))
+    free_mb = usage.free / (1024 * 1024)
+    threshold_mb = STORAGE_MIN_FREE_BYTES / (1024 * 1024)
+    ok = usage.free >= STORAGE_MIN_FREE_BYTES
+    return {
+        "ok": ok,
+        "free_bytes": usage.free,
+        "free_mb": round(free_mb, 1),
+        "threshold_mb": round(threshold_mb, 1),
+    }
 
 
 def collect(agent_id: str, conn=None) -> dict:
@@ -57,7 +72,28 @@ def collect(agent_id: str, conn=None) -> dict:
                     except json.JSONDecodeError:
                         continue
 
-                    role = msg.get("role", "")
+                    # A1: Schema 版本检查 — 前向兼容
+                    format_ver = msg.get("_format_version")
+                    if format_ver is not None and isinstance(format_ver, (int, float)):
+                        if int(format_ver) > COLLECT_SCHEMA_VERSION:
+                            append_event(
+                                agent_id=agent_id,
+                                event_type="schema_warning",
+                                payload={
+                                    "message": f"Unsupported JSONL format version {format_ver} (supported: {COLLECT_SCHEMA_VERSION})",
+                                    "file": os.path.basename(filepath),
+                                    "format_version": int(format_ver),
+                                },
+                                timestamp=datetime.now().isoformat(),
+                                source_path=filepath,
+                                conn=conn,
+                            )
+                            continue  # 跳过无法解析的行，不崩溃
+
+                    # 行级必填字段校验
+                    role = msg.get("role")
+                    if not role:
+                        continue  # 无 role 的行跳过，不崩溃
                     if role == "session_meta":
                         continue
 

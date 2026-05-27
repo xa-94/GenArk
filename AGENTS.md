@@ -33,12 +33,13 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 
 ## 当前状态
 
-**阶段**: Phase 1 — 单智能体 MVP ✅ 已完成（2026-05-27 Bug 修复）
+**阶段**: Phase 1 — 单智能体 MVP ✅ 已完成（2026-05-27 Bug 修复 + 降级策略补全）
 - 顾远实例（`~/.hermes-pm/`）数据采集全链路跑通
 - Event Store + 哈希链 + LLM 日报 + 钉钉推送
 - Cron 调度：每 30min 采集 / 每天 23:00 日报（已修复 uv 路径问题）
 - 工具成功率判定从子字符串匹配改为结构化 JSON 判定
 - Memory/Skill 事件时间戳改用文件 mtime
+- 降级策略 7/7 全覆盖：LLM降级 / 采集容错 / DB回滚 / 哈希校验 / JSONL版本检查 / rebuild_state_store / 存储空间告警
 - 代码：`engine/` 目录，Python + SQLite + DeepSeek
 
 **Next**: Phase 2 — 接入赫明、守山实例，建立多智能体拼版日报

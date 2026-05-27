@@ -18,12 +18,12 @@ def _load_env():
 
 _load_env()
 
-from .db import init_db, get_conn
-from .collector import collect
+from .db import init_db, get_conn, rebuild_state_store
+from .collector import collect, check_storage
 from .memory_watcher import watch_memories, watch_skills
 from .event_store import verify_chain
 from .reporter import generate_report, save_report
-from .pusher import push_report
+from .pusher import push_report, push_text
 from .config import AGENT_INSTANCES
 
 
@@ -33,6 +33,14 @@ def cmd_init(_args):
 
 
 def cmd_collect(args):
+    # A3: 存储空间检查
+    storage = check_storage(args.agent)
+    if not storage["ok"]:
+        msg = f"⚠️ {args.agent} 存储空间不足：剩余 {storage['free_mb']}MB < 阈值 {storage['threshold_mb']}MB，暂停采集"
+        print(msg)
+        push_text(msg)
+        return
+
     result = collect(args.agent)
     print(f"✅ 采集完成：{result['new_events']} 条新事件，扫描 {result['files_scanned']} 个文件")
 
@@ -48,6 +56,14 @@ def cmd_collect(args):
 def cmd_daily(args):
     agent_id = args.agent
     date = args.date or datetime.now().strftime("%Y-%m-%d")
+
+    # A3: 存储空间检查
+    storage = check_storage(agent_id)
+    if not storage["ok"]:
+        msg = f"⚠️ {agent_id} 存储空间不足：剩余 {storage['free_mb']}MB < 阈值 {storage['threshold_mb']}MB，暂停日报生成"
+        print(msg)
+        push_text(msg)
+        return
 
     print("📡 采集数据...")
     result = collect(agent_id)
@@ -104,6 +120,19 @@ def cmd_status(args):
             print("采集进度：尚未开始")
 
 
+def cmd_rebuild_state(_args):
+    rebuild_state_store()
+    print("✅ State Store 已重建（events 表保留），请重新运行 collect 恢复状态")
+
+
+def cmd_check_storage(args):
+    storage = check_storage(args.agent)
+    status = "✅" if storage["ok"] else "⚠️"
+    print(f"{status} 存储空间：{storage['free_mb']}MB 可用（阈值 {storage['threshold_mb']}MB）")
+    if not storage["ok"]:
+        push_text(f"存储空间告警：{storage['free_mb']}MB < {storage['threshold_mb']}MB")
+
+
 def main():
     parser = argparse.ArgumentParser(description="GenArk — 智能体生命平台")
     sub = parser.add_subparsers(dest="command")
@@ -123,6 +152,11 @@ def main():
     p = sub.add_parser("status", help="查看状态")
     p.add_argument("--agent", required=True, choices=list(AGENT_INSTANCES.keys()))
 
+    sub.add_parser("rebuild-state", help="数据库损坏一键重建（保留 events 表）")
+
+    p = sub.add_parser("check-storage", help="检查存储空间")
+    p.add_argument("--agent", default="guyuan", choices=list(AGENT_INSTANCES.keys()))
+
     args = parser.parse_args()
 
     commands = {
@@ -131,6 +165,8 @@ def main():
         "daily": cmd_daily,
         "verify-chain": cmd_verify,
         "status": cmd_status,
+        "rebuild-state": cmd_rebuild_state,
+        "check-storage": cmd_check_storage,
     }
 
     fn = commands.get(args.command)

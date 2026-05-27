@@ -83,3 +83,21 @@ def init_db() -> None:
     """初始化数据库表"""
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+
+
+def rebuild_state_store() -> None:
+    """从 Event Store 全量重建所有状态表。
+
+    State Store（collector_cursor, file_snapshots, daily_reports）可从
+    Event Store 和原始文件重新计算。数据库损坏时一键恢复。
+
+    注意：daily_reports 由下次日终批处理重新生成；
+    collector_cursor 从文件头开始重新扫描。
+    """
+    with get_conn() as conn:
+        # 仅删除状态表，保留不可变的 events 表
+        conn.execute("DROP TABLE IF EXISTS collector_cursor")
+        conn.execute("DROP TABLE IF EXISTS file_snapshots")
+        conn.execute("DROP TABLE IF EXISTS daily_reports")
+        conn.executescript(SCHEMA)
+    # 注意：重建后需要重新跑 collect 来恢复 collector_cursor 和 file_snapshots

@@ -31,6 +31,12 @@ COLLECT_FILE_GLOB = "*.jsonl"  # 只采集 JSONL，跳过 Cron JSON
 REPORT_RETRY_COUNT = 3
 REPORT_FALLBACK_TO_DATA_ONLY = True  # LLM 失败时降级为纯数据
 
+# ── 降级与容错 ──
+# A1: JSONL schema 版本。Hermes JSONL 目前无 version 字段，此为前向兼容。
+COLLECT_SCHEMA_VERSION = 1
+# A3: 存储空间告警阈值（500MB）
+STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024  # 500 MB
+
 
 def agent_home(agent_id: str) -> str:
     """获取智能体的 Hermes 实例根目录"""
