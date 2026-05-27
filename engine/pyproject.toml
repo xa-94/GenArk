@@ -1,0 +1,11 @@
+[project]
+name = "genark"
+version = "0.1.0"
+description = "GenArk — 智能体生命平台"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28",
+]
+
+[project.scripts]
+genark = "genark.cli:main"
