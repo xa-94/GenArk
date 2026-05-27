@@ -24,6 +24,9 @@ from .memory_watcher import watch_memories, watch_skills
 from .event_store import verify_chain
 from .reporter import generate_report, save_report
 from .pusher import push_report, push_text
+from .composer import compose_daily
+from .relations import compute_relations, format_relations
+from .cross_verify import verify_cross_mentions
 from .config import AGENT_INSTANCES
 
 
@@ -133,6 +136,36 @@ def cmd_check_storage(args):
         push_text(f"存储空间告警：{storage['free_mb']}MB < {storage['threshold_mb']}MB")
 
 
+def cmd_daily_all(args):
+    """拼版日报：生成 + 保存（不推送）"""
+    date = args.date or datetime.now().strftime("%Y-%m-%d")
+    agents = args.agents.split(",") if args.agents else None
+    composed = compose_daily(agents=agents, date=date)
+    print(f"✅ 拼版日报已生成（{date}，{len(composed['agents'])} 人，{composed['intersections']} 条交汇）")
+    print()
+    print(composed["narrative"])
+
+
+def cmd_relations(args):
+    """关系网络查看"""
+    agents = args.agents.split(",") if args.agents else None
+    rel = compute_relations(agents=agents, weeks=args.weeks)
+    print(format_relations(rel))
+    import json
+    print(f"\n📋 详细数据：{json.dumps(rel, indent=2, ensure_ascii=False)}")
+
+
+def cmd_verify_cross(_args):
+    """交叉验证 @ 消息一致性"""
+    result = verify_cross_mentions(
+        agents=["guyuan", "heming"],
+        days=7,
+    )
+    import json
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    print(f"\n{'✅' if result['verdict'] == '可行' else '⚠️'} 结论：{result['verdict']}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="GenArk — 智能体生命平台")
     sub = parser.add_subparsers(dest="command")
@@ -157,6 +190,16 @@ def main():
     p = sub.add_parser("check-storage", help="检查存储空间")
     p.add_argument("--agent", default="guyuan", choices=list(AGENT_INSTANCES.keys()))
 
+    p = sub.add_parser("daily-all", help="拼版日报（生成不推送）")
+    p.add_argument("--date", help="日期 YYYY-MM-DD（默认今天）")
+    p.add_argument("--agents", help="智能体列表，逗号分隔（默认 guyuan,heming）")
+
+    p = sub.add_parser("relations", help="关系网络统计")
+    p.add_argument("--agents", help="智能体列表，逗号分隔")
+    p.add_argument("--weeks", type=int, default=4, help="统计周数（默认 4）")
+
+    sub.add_parser("verify-cross-mentions", help="交叉验证 @ 消息一致性")
+
     args = parser.parse_args()
 
     commands = {
@@ -167,6 +210,9 @@ def main():
         "status": cmd_status,
         "rebuild-state": cmd_rebuild_state,
         "check-storage": cmd_check_storage,
+        "daily-all": cmd_daily_all,
+        "relations": cmd_relations,
+        "verify-cross-mentions": cmd_verify_cross,
     }
 
     fn = commands.get(args.command)

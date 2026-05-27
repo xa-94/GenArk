@@ -15,8 +15,8 @@ def _hash(content: str) -> str:
 def _next_event_id(agent_id: str, conn) -> str:
     today = datetime.now().strftime("%Y%m%d")
     cur = conn.execute(
-        "SELECT id FROM events WHERE agent_id = ? AND id LIKE ? ORDER BY id DESC LIMIT 1",
-        (agent_id, f"evt_{today}_%"),
+        "SELECT id FROM events WHERE id LIKE ? ORDER BY id DESC LIMIT 1",
+        (f"evt_{today}_%",),
     )
     row = cur.fetchone()
     if row:
