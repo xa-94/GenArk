@@ -1,10 +1,12 @@
-"""拼版日报：多智能体日报组装 + 交汇小节检测"""
+"""拼版日报：多智能体日报组装 + 交汇小节检测 + 关系趋势 + 推送"""
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .db import get_conn
 from .reporter import generate_report, save_report
+from .pusher import push_composed
+from .relations import compute_relations
 
 
 def detect_intersections(agents: list[str], date: str) -> list[dict]:
@@ -33,7 +35,6 @@ def detect_intersections(agents: list[str], date: str) -> list[dict]:
     intersections = []
     for r in rows:
         content = r["content"] or ""
-        # 提取被 @ 的 bot 名
         import re
         mentioned = re.findall(r"@(\S+)", content)
         intersections.append({
@@ -47,35 +48,110 @@ def detect_intersections(agents: list[str], date: str) -> list[dict]:
     return intersections
 
 
+def _check_intersection_quality(
+    agents: list[str], date: str
+) -> dict:
+    """快速检查当日交汇数据质量。
+
+    对比各 agent 的 @ 消息数。如果只有一个 agent 有 @ 而另一个没有，
+    说明数据不对称，交汇不可靠。
+
+    Returns:
+        {"reliable": bool, "reason": str, "counts": dict}
+    """
+    if len(agents) < 2:
+        return {"reliable": False, "reason": "单人模式", "counts": {}}
+
+    placeholders = ",".join("?" * len(agents))
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"""SELECT agent_id, COUNT(*) as cnt
+                FROM events
+                WHERE agent_id IN ({placeholders})
+                AND event_type = 'session_message'
+                AND json_extract(payload, '$.role') = 'user'
+                AND json_extract(payload, '$.content') LIKE '%@%'
+                AND date(timestamp) = ?
+                GROUP BY agent_id""",
+            (*agents, date),
+        ).fetchall()
+
+    counts = {r["agent_id"]: r["cnt"] for r in rows}
+
+    # 如果所有 agent 都没有 @ → 无交汇，不是不可靠
+    if sum(counts.values()) == 0:
+        return {"reliable": True, "reason": "今日无交汇", "counts": counts}
+
+    # 如果只有一方有 @ → 数据不对称
+    active = [a for a, c in counts.items() if c > 0]
+    if len(active) == 1:
+        return {
+            "reliable": False,
+            "reason": f"仅 {active[0]} 侧有 @ 信号",
+            "counts": counts,
+        }
+
+    return {"reliable": True, "reason": "双方均有 @ 信号", "counts": counts}
+
+
 def compose_daily(
     agents: list[str] | None = None,
     date: str | None = None,
+    push: bool = True,
 ) -> dict:
     """生成拼版日报。
 
     流程：
     1. 为每个 agent 生成独立日报（如已存在则跳过）
-    2. 检测交汇事件
-    3. 组装拼版文档
+    2. 检测交汇事件 + 质量门禁
+    3. 计算关系趋势
+    4. 组装拼版文档
+    5. 推送到钉钉（可选）
     """
     if agents is None:
         agents = ["guyuan", "heming"]
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
 
+    # 1. 生成各 agent 日报 + 采集
     reports = []
     for agent_id in agents:
+        from .collector import collect
+        from .memory_watcher import watch_memories, watch_skills
+
+        # 采集当日新数据
+        collect(agent_id)
+        watch_memories(agent_id)
+        watch_skills(agent_id)
+
         report = generate_report(agent_id, date)
         save_report(report)
         reports.append(report)
 
+    # 2. 交汇检测 + 质量门禁
     intersections = detect_intersections(agents, date)
+    quality = _check_intersection_quality(agents, date)
 
-    composed = _assemble(reports, intersections, date)
+    # 3. 关系趋势
+    relations = compute_relations(agents, weeks=4)
+
+    # 4. 组装
+    composed = _assemble(reports, intersections, quality, relations, date)
+
+    # 5. 推送
+    if push:
+        push_composed(composed)
+
     return composed
 
 
-def _assemble(reports: list[dict], intersections: list[dict], date: str) -> dict:
+def _assemble(
+    reports: list[dict],
+    intersections: list[dict],
+    quality: dict,
+    relations: dict,
+    date: str,
+) -> dict:
     """组装拼版日报文本"""
     agent_names = {
         "guyuan": ("顾远", "PM"),
@@ -102,8 +178,8 @@ def _assemble(reports: list[dict], intersections: list[dict], date: str) -> dict
         )
         lines.append(f"🧠 {r['narrative']}")
 
-    # 交汇小节
-    if intersections:
+    # ── 交汇小节（带质量门禁）──
+    if intersections and quality["reliable"]:
         lines.append("═" * 35)
         lines.append("🔗 今日交汇\n")
         for ix in intersections[:5]:  # 最多 5 条
@@ -111,6 +187,25 @@ def _assemble(reports: list[dict], intersections: list[dict], date: str) -> dict
             lines.append(
                 f"→ {ix['time']} {name}侧：{ix['content'][:120]}"
                 f"【{ix['event_id']}】"
+            )
+    elif intersections and not quality["reliable"]:
+        lines.append("═" * 35)
+        lines.append(f"🔗 今日交汇")
+        lines.append(f"（检测到 {len(intersections)} 条互动信号，但数据不对称——"
+                     f"{quality['reason']}，细节暂略）")
+    # else: 无交汇 → 不显示交汇小节
+
+    # ── 关系趋势 ──
+    if relations and relations.get("pairs"):
+        lines.append("═" * 35)
+        lines.append("📈 关系趋势（近 4 周）")
+        name_map = {"guyuan": "顾远", "heming": "赫明", "shoushan": "守山"}
+        for agent_id, data in relations["pairs"].items():
+            name = name_map.get(agent_id, agent_id)
+            lines.append(
+                f"{name} 被 @ {data['total_mentions']} 次 "
+                f"· 趋势 {data['trend_icon']} "
+                f"· {data['bar']}"
             )
 
     narrative = "\n".join(lines)

@@ -141,7 +141,7 @@ def generate_report(agent_id: str, date: str | None = None) -> dict:
         import re
         event_refs = re.findall(r"evt_\d{8}_\d{6}", narrative)
 
-    report_id = f"report_{date.replace('-', '')}"
+    report_id = f"report_{agent_id}_{date.replace('-', '')}"
     report = {
         "id": report_id,
         "agent_id": agent_id,

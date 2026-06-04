@@ -9,7 +9,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 # 智能体实例路径映射
 AGENT_INSTANCES = {
     "guyuan": "/home/hermes/.hermes-pm",
-    "heming": "/home/hermes/.hermes-genboz",
+    "heming": "/home/hermes/.hermes/profiles/heming",
     "shoushan": "/home/hermes/.hermes",
 }
 

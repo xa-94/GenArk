@@ -27,6 +27,7 @@ from .pusher import push_report, push_text
 from .composer import compose_daily
 from .relations import compute_relations, format_relations
 from .cross_verify import verify_cross_mentions
+from .major_events import detect_major_events, build_major_event_message
 from .config import AGENT_INSTANCES
 
 
@@ -137,13 +138,52 @@ def cmd_check_storage(args):
 
 
 def cmd_daily_all(args):
-    """拼版日报：生成 + 保存（不推送）"""
+    """拼版日报：生成 + 推送 + 重大事件"""
     date = args.date or datetime.now().strftime("%Y-%m-%d")
     agents = args.agents.split(",") if args.agents else None
-    composed = compose_daily(agents=agents, date=date)
-    print(f"✅ 拼版日报已生成（{date}，{len(composed['agents'])} 人，{composed['intersections']} 条交汇）")
+    do_push = not args.no_push
+
+    # A3: 存储空间检查
+    storage = check_storage()
+    if not storage["ok"]:
+        msg = f"⚠️ 存储空间不足：剩余 {storage['free_mb']}MB < 阈值 {storage['threshold_mb']}MB"
+        print(msg)
+        push_text(msg)
+        return
+
+    composed = compose_daily(agents=agents, date=date, push=do_push)
+    print(f"✅ 拼版日报已{'推送' if do_push else '生成'}（{date}，{len(composed['agents'])} 人，{composed['intersections']} 条交汇）")
     print()
     print(composed["narrative"])
+
+    # ── 重大事件检测 ──
+    if not agents:
+        agents = ["guyuan", "heming"]
+
+    all_major = {}
+    from .reporter import generate_report as _gen_report
+    for agent_id in agents:
+        # 获取 stats（已由 compose_daily 生成过，直接从 DB 读）
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT stats_json FROM daily_reports WHERE agent_id = ? AND report_date = ? ORDER BY created_at DESC LIMIT 1",
+                (agent_id, date),
+            ).fetchone()
+        if not row:
+            continue
+        import json as _json
+        stats = _json.loads(row["stats_json"])
+        events = detect_major_events(agent_id, stats)
+        if events:
+            all_major[agent_id] = events
+
+    if all_major:
+        msg = build_major_event_message(all_major)
+        if msg:
+            print(f"\n⚡ 重大事件：")
+            print(msg)
+            if do_push:
+                push_text(msg)
 
 
 def cmd_relations(args):
@@ -190,9 +230,10 @@ def main():
     p = sub.add_parser("check-storage", help="检查存储空间")
     p.add_argument("--agent", default="guyuan", choices=list(AGENT_INSTANCES.keys()))
 
-    p = sub.add_parser("daily-all", help="拼版日报（生成不推送）")
+    p = sub.add_parser("daily-all", help="拼版日报（生成 + 推送 + 重大事件）")
     p.add_argument("--date", help="日期 YYYY-MM-DD（默认今天）")
     p.add_argument("--agents", help="智能体列表，逗号分隔（默认 guyuan,heming）")
+    p.add_argument("--no-push", action="store_true", help="仅生成不推送（调试用）")
 
     p = sub.add_parser("relations", help="关系网络统计")
     p.add_argument("--agents", help="智能体列表，逗号分隔")
