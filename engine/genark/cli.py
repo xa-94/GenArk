@@ -158,7 +158,7 @@ def cmd_daily_all(args):
 
     # ── 重大事件检测 ──
     if not agents:
-        agents = ["guyuan", "heming"]
+        agents = ["guyuan", "heming", "shoushan"]
 
     all_major = {}
     from .reporter import generate_report as _gen_report
@@ -232,7 +232,7 @@ def main():
 
     p = sub.add_parser("daily-all", help="拼版日报（生成 + 推送 + 重大事件）")
     p.add_argument("--date", help="日期 YYYY-MM-DD（默认今天）")
-    p.add_argument("--agents", help="智能体列表，逗号分隔（默认 guyuan,heming）")
+    p.add_argument("--agents", help="智能体列表，逗号分隔（默认 guyuan,heming,shoushan）")
     p.add_argument("--no-push", action="store_true", help="仅生成不推送（调试用）")
 
     p = sub.add_parser("relations", help="关系网络统计")

@@ -109,7 +109,7 @@ def compose_daily(
     5. 推送到钉钉（可选）
     """
     if agents is None:
-        agents = ["guyuan", "heming"]
+        agents = ["guyuan", "heming", "shoushan"]
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
 

@@ -11,7 +11,7 @@ def compute_relations(agents: list[str] | None = None, weeks: int = 4) -> dict:
     纯规则，零 LLM。
     """
     if agents is None:
-        agents = ["guyuan", "heming"]
+        agents = ["guyuan", "heming", "shoushan"]
 
     since = (datetime.now() - timedelta(weeks=weeks)).strftime("%Y-%m-%d")
     placeholders = ",".join("?" * len(agents))
