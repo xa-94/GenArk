@@ -1,9 +1,9 @@
 # GenArk — 智能体生命平台 · 开发指南
 
 > **产品代号**: GenArk（生成方舟）
-> **版本**: v1.1.0
+> **版本**: v1.2.0
 > **创建日期**: 2026-05-26
-> **当前阶段**: Phase 2 运行中 — 多智能体拼版日报已上线
+> **当前阶段**: Phase 3 进行中 — 结构化知识管理 + learnings 闭环
 
 ---
 
@@ -18,7 +18,7 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 | 创始人 | 人类 | **黄祥霭** | 所有产品决策，唯一决策者 |
 | 产品经理 | 本实例 | **顾远** | PRD 维护、产品架构设计 |
 | Tech Lead | `~/.hermes/profiles/heming` | **赫明** | 技术架构、代码实现 |
-| 主智能体 | `~/.hermes/` | **守山** | 主智能体 + 通用助手，祥霭最核心的伙伴 |
+| 主智能体 | `~/.hermes/` | **守山** | 主智能体 + 通用助手，GenArk 三方信息枢纽 |
 
 ## 真相源
 
@@ -33,23 +33,23 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 
 ## 当前状态
 
-**阶段**: Phase 2 运行中 ✅
-- 采集 cron：2 条（顾远 + 赫明，每 30min）
-- 日报 cron：1 条（拼版合推，23:00）
-- 哈希链：heming 5955 条 / guyuan 2642 条，完整
-- 关系网络 + 协作检测 + 推送策略均已集成
+**阶段**: Phase 3 进行中 — learnings 闭环
+- Phase 2 稳定运行：采集 cron ×2 + 拼版日报 cron ×1
+- Day 1 完成：PM handoff + ROLE.yaml ×3 + validate-handoff.py + 读写规则草案
+- 守山前置件全部到位
 
-**Next**: Phase 3 待定
+**Next**: 赫明 T3 建表 + A 类 seed → 守山 B 类入库 → 审核 cron → 日报 2.0 试跑
 
 ## 核心文档
 
 | 文档 | 路径 | 用途 |
 |------|------|------|
 | PRD | `.qoder/specs/prd.md` | 产品需求真相源（v1.4） |
-| Phase 2 产品设计 | `.qoder/specs/genark-phase2-product-design.md` | 多智能体全景视图设计 |
-| Phase 2 范围 | `.qoder/handoffs/genark-phase2-scope.md` | 2026-05-27 范围对齐产出 |
 | Phase 2 运维交接 | `.qoder/handoffs/ops-handoff-phase2-2026-06-04.md` | 赫明 → 守山 部署交接 |
-| Phase 1 技术设计 | `.qoder/specs/genark-phase1-tech-design.md` | Phase 1 技术方案 |
+| Phase 3 PM handoff | `.qoder/handoffs/pm-handoff-phase3-2026-06-06.md` | 顾远 → 赫明 知识层架构 |
+| Phase 3 技术评估 | `.qoder/reports/genark-phase3-tech-assessment-2026-06-06.md` | 赫明技术评估报告 |
+| Phase 3 DDL | `engine/bin/migrate-phase3.sql` | learnings 三表建表脚本 |
+| 读写规则草案 | `.qoder/specs/read-write-rules-draft.md` | 会议产出，全文见下方 |
 
 ## Key Rules
 
@@ -57,3 +57,45 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 2. PRD 是唯一真相源，先更新 PRD 再做任何事
 3. PM 定义 WHAT，Tech Lead 定义 HOW
 4. 先汇报计划 → 等创始人确认 → 再执行
+
+---
+
+## 知识层读写规则
+
+> 来源: 2026-06-06 六轮会议 Round 4 结论
+> 定位: 分布式 Envelope 的权限层——谁往哪写、谁能读、什么条件下可以改
+
+### 所有权矩阵
+
+| 层 | 写权限 | 读权限 | 增改规则 |
+|----|:------:|:------:|------|
+| **PRD** | 顾远 | 全员 | 顾远维护，祥霭确认后生效 |
+| **AGENTS.md** | 守山 | 全员 | 守山唯一写入，他人通过看板 comment 提议 |
+| **INFRA.md** | 守山 | 全员 | 守山唯一维护 |
+| **Memory** | 各 Agent 自写 | 本 Agent + GenArk 采集只读 | 各 Agent 主观记录，不互写 |
+| **Skill** | 各 Agent 自建/自改 | 本 Agent + GenArk 采集只读 | 踩坑后自行补，他人可提议 |
+| **ROLE.yaml** | 顾远（初版）→ 守山（更新） | 全员 + GenArk 采集 | 提议→顾远审核→祥霭确认→守山更新 |
+| **handoff** | 顾远（PM→TL）/ 赫明（TL→Ops） | 全员 | YAML frontmatter 四必填字段 |
+| **看板** | 全员（各自 claim/comment/complete） | 全员 | 状态机约束，不跨角色 |
+| **决策日志** | 守山 | 全员 | 守山维护，append-only |
+| **learnings** | 系统 + 人工（A类:赫明 / B类:守山） | 审核者 + 日报 | status=pending→approved/rejected |
+
+### 禁止写入清单
+
+| 谁 | 禁止写 |
+|:--:|------|
+| 赫明 | PRD、AGENTS.md、INFRA.md、其他 Agent 的 Memory/Skill、PM handoff |
+| 顾远 | 业务代码、AGENTS.md/INFRA.md、运维配置 |
+| 守山 | 业务代码、PRD、产品方向决策 |
+
+### GenArk 采集引擎读写规则
+
+| 操作 | Phase 2-3 | Phase 4（达标后） |
+|------|:---:|:---:|
+| 采集会话 JSONL | ✅ 只读 | ✅ 只读 |
+| 采集 Memory/Skill 变更 | ✅ 只读 | ✅ 只读 |
+| 写入 Agent Memory | ❌ | ✅（learnings→approved→自动写入） |
+| 写入 Agent Skill | ❌ | ✅（pattern→Skill 自动创建） |
+| 写入 AGENTS.md | ❌ | ❌（永久人工，守山维护） |
+
+> **Phase 4 触发条件**：learnings 连续 30 天 FP<5% + 去重准确率 >90% + 祥霭确认信任

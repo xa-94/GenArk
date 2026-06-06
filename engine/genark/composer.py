@@ -145,6 +145,69 @@ def compose_daily(
     return composed
 
 
+def _build_learnings_panel(date: str) -> str | None:
+    """构建 learnings 面板文本（Phase 3 日报 2.0）。
+
+    展示：当日新增 / 待审核数 / 最近 3 条标题。
+    如果 learnings 表不存在或无数据，返回 None（不显示）。
+    """
+    try:
+        with get_conn() as conn:
+            # 检查表是否存在
+            exists = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='learnings'"
+            ).fetchone()
+            if not exists:
+                return None
+
+            # 当日新增
+            today_new = conn.execute(
+                "SELECT COUNT(*) FROM learnings WHERE date(created_at) = ?",
+                (date,),
+            ).fetchone()[0]
+
+            # 待审核数
+            pending = conn.execute(
+                "SELECT COUNT(*) FROM learnings WHERE status = 'pending'"
+            ).fetchone()[0]
+
+            # 全部为零则跳过
+            if today_new == 0 and pending == 0:
+                return None
+
+            # 最近 3 条
+            recent = conn.execute(
+                """SELECT id, source_type, content, category
+                   FROM learnings
+                   WHERE status = 'pending'
+                   ORDER BY created_at DESC
+                   LIMIT 3"""
+            ).fetchall()
+
+            lines = ["🧠 知识沉淀"]
+            lines.append(f"   当日新增 {today_new} · 待审核 {pending}")
+
+            if recent:
+                lines.append("   最近入库：")
+                type_icon = {
+                    "bug_fix": "🐛",
+                    "correction": "✏️",
+                    "pattern": "📐",
+                    "convention": "📋",
+                }
+                for r in recent:
+                    icon = type_icon.get(r["source_type"], "📌")
+                    cat = f" [{r['category']}]" if r["category"] else ""
+                    content = r["content"][:80].replace("\n", " ")
+                    lines.append(f"   {icon} #{r['id']}{cat} {content}...")
+
+            return "\n".join(lines)
+
+    except Exception:
+        # 表不存在或其他异常 → 静默跳过，不影响日报主流程
+        return None
+
+
 def _assemble(
     reports: list[dict],
     intersections: list[dict],
@@ -207,6 +270,12 @@ def _assemble(
                 f"· 趋势 {data['trend_icon']} "
                 f"· {data['bar']}"
             )
+
+    # ── Learnings 面板（Phase 3 日报 2.0）──
+    learnings_panel = _build_learnings_panel(date)
+    if learnings_panel:
+        lines.append("═" * 35)
+        lines.append(learnings_panel)
 
     narrative = "\n".join(lines)
 
