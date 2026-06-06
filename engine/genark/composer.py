@@ -146,10 +146,9 @@ def compose_daily(
 
 
 def _build_learnings_panel(date: str) -> str | None:
-    """构建 learnings 面板文本（Phase 3 日报 2.0）。
+    """构建 learnings 面板文本（Phase 3 日报 2.0 → Phase 4b 关联链增强）。
 
-    展示：当日新增 / 待审核数 / 最近 3 条标题。
-    如果 learnings 表不存在或无数据，返回 None（不显示）。
+    展示：当日新增 / 待审核数 / 每条新 learning 的因果关联。
     """
     try:
         with get_conn() as conn:
@@ -160,7 +159,7 @@ def _build_learnings_panel(date: str) -> str | None:
             if not exists:
                 return None
 
-            # 当日新增
+            # 当日新增（全部状态）
             today_new = conn.execute(
                 "SELECT COUNT(*) FROM learnings WHERE date(created_at) = ?",
                 (date,),
@@ -175,31 +174,70 @@ def _build_learnings_panel(date: str) -> str | None:
             if today_new == 0 and pending == 0:
                 return None
 
-            # 最近 3 条
-            recent = conn.execute(
-                """SELECT id, source_type, content, category
-                   FROM learnings
-                   WHERE status = 'pending'
-                   ORDER BY created_at DESC
-                   LIMIT 3"""
-            ).fetchall()
-
             lines = ["🧠 知识沉淀"]
             lines.append(f"   当日新增 {today_new} · 待审核 {pending}")
 
-            if recent:
-                lines.append("   最近入库：")
+            # 当日新增 learnings（含关系）
+            if today_new > 0:
                 type_icon = {
                     "bug_fix": "🐛",
                     "correction": "✏️",
                     "pattern": "📐",
                     "convention": "📋",
                 }
-                for r in recent:
-                    icon = type_icon.get(r["source_type"], "📌")
-                    cat = f" [{r['category']}]" if r["category"] else ""
-                    content = r["content"][:80].replace("\n", " ")
-                    lines.append(f"   {icon} #{r['id']}{cat} {content}...")
+                creator_label = {
+                    "heming": "赫明",
+                    "shoushan": "守山",
+                    "system": "系统",
+                    "guyuan": "顾远",
+                }
+
+                today_learnings = conn.execute(
+                    """SELECT id, source_type, content, created_by, category
+                       FROM learnings
+                       WHERE date(created_at) = ?
+                       ORDER BY id DESC
+                       LIMIT 8""",
+                    (date,),
+                ).fetchall()
+
+                # 检查 relations 表是否存在
+                has_relations = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='learning_relations'"
+                ).fetchone() is not None
+
+                for lrn in today_learnings:
+                    icon = type_icon.get(lrn["source_type"], "📌")
+                    creator = creator_label.get(lrn["created_by"], lrn["created_by"])
+                    content = lrn["content"][:80].replace("\n", " ")
+                    lines.append(f"   {icon} #{lrn['id']} ({creator}) {content}")
+
+                    # 查关联链（最多 3 条）
+                    if has_relations:
+                        rels = conn.execute(
+                            """SELECT lr.relation_type,
+                                      CASE WHEN lr.source_id = ? THEN lr.target_id ELSE lr.source_id END as other_id,
+                                      substr(l.content, 1, 60) as other_summary,
+                                      l.created_by as other_creator,
+                                      l.source_type as other_type
+                               FROM learning_relations lr
+                               JOIN learnings l ON (CASE WHEN lr.source_id = ? THEN lr.target_id ELSE lr.source_id END) = l.id
+                               WHERE lr.source_id = ? OR lr.target_id = ?
+                               LIMIT 3""",
+                            (lrn["id"], lrn["id"], lrn["id"], lrn["id"]),
+                        ).fetchall()
+
+                        rel_label = {
+                            "caused_by": "因果",
+                            "generalizes": "泛化",
+                            "same_root": "同根",
+                            "contradicts": "矛盾",
+                        }
+                        for rel in rels:
+                            other_creator = creator_label.get(rel["other_creator"], rel["other_creator"])
+                            label = rel_label.get(rel["relation_type"], rel["relation_type"])
+                            summary = rel["other_summary"][:50]
+                            lines.append(f"      🔗 #{rel['other_id']} {label} ({other_creator}) {summary}")
 
             return "\n".join(lines)
 

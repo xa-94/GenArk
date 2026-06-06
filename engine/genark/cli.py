@@ -262,6 +262,10 @@ def main():
     p_query_sub.add_parser("me", help="自我审视")
     p_query_sub.add_parser("inject", help="读取待注入 learnings")
 
+    p = p_query_sub.add_parser("relations", help="learning 因果关系链")
+    p.add_argument("id", nargs="?", type=int, help="Learning ID（不传显示概览）")
+    p.add_argument("--depth", type=int, default=2, help="追溯深度（默认 2）")
+
     args = parser.parse_args()
 
     commands = {
@@ -288,6 +292,7 @@ def main():
         from .query.decisions import cmd_query_decisions
         from .query.me import cmd_query_me
         from .query.inject import cmd_query_inject
+        from .query.relations import cmd_query_relations
 
         query_handlers = {
             "agent": cmd_query_agent,
@@ -297,6 +302,7 @@ def main():
             "decisions": cmd_query_decisions,
             "me": cmd_query_me,
             "inject": cmd_query_inject,
+            "relations": cmd_query_relations,
         }
         handler = query_handlers.get(getattr(args, "query_command", None))
         if handler:
