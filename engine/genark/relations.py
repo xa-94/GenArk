@@ -11,7 +11,7 @@ def compute_relations(agents: list[str] | None = None, weeks: int = 4) -> dict:
     纯规则，零 LLM。
     """
     if agents is None:
-        agents = ["guyuan", "heming", "shoushan"]
+        agents = ["guyuan", "heming", "shoushan", "xiangai"]
 
     since = (datetime.now() - timedelta(weeks=weeks)).strftime("%Y-%m-%d")
     placeholders = ",".join("?" * len(agents))
@@ -90,7 +90,7 @@ def _trend_bar(values: list[int], max_width: int = 12) -> str:
 def format_relations(relations: dict) -> str:
     """格式化关系面板为文本"""
     lines = ["👥 关系面板（最近 {} 周）".format(relations["weeks"]), ""]
-    name_map = {"guyuan": "顾远", "heming": "赫明", "shoushan": "守山"}
+    name_map = {"guyuan": "顾远", "heming": "赫明", "shoushan": "守山", "xiangai": "祥霭分身"}
 
     for agent_id, data in relations["pairs"].items():
         name = name_map.get(agent_id, agent_id)

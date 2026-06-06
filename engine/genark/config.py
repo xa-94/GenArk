@@ -11,6 +11,7 @@ AGENT_INSTANCES = {
     "guyuan": "/home/hermes/.hermes-pm",
     "heming": "/home/hermes/.hermes/profiles/heming",
     "shoushan": "/home/hermes/.hermes",
+    "xiangai": "/home/hermes/.hermes/profiles/xiangai",
 }
 
 # 数据库

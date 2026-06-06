@@ -109,7 +109,7 @@ def compose_daily(
     5. 推送到钉钉（可选）
     """
     if agents is None:
-        agents = ["guyuan", "heming", "shoushan"]
+        agents = ["guyuan", "heming", "shoushan", "xiangai"]
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
 
@@ -262,7 +262,7 @@ def _assemble(
     if relations and relations.get("pairs"):
         lines.append("═" * 35)
         lines.append("📈 关系趋势（近 4 周）")
-        name_map = {"guyuan": "顾远", "heming": "赫明", "shoushan": "守山"}
+        name_map = {"guyuan": "顾远", "heming": "赫明", "shoushan": "守山", "xiangai": "祥霭分身"}
         for agent_id, data in relations["pairs"].items():
             name = name_map.get(agent_id, agent_id)
             lines.append(

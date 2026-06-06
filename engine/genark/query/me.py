@@ -10,12 +10,14 @@ AGENT_DISPLAY = {
     "guyuan": "顾远",
     "heming": "赫明",
     "shoushan": "守山",
+    "xiangai": "祥霭分身",
 }
 
 AGENT_ROLES = {
     "guyuan": "产品经理",
     "heming": "Tech Lead",
     "shoushan": "主智能体",
+    "xiangai": "祥霭分身",
 }
 
 

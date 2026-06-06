@@ -8,6 +8,7 @@ from .config import DINGTALK_WEBHOOK_URL
 
 
 AGENT_DISPLAY_NAMES = {
+    "xiangai": "祥霭分身",
     "guyuan": "顾远",
     "heming": "赫明",
     "shoushan": "守山",

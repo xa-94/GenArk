@@ -9,6 +9,7 @@ AGENT_DISPLAY = {
     "guyuan": "顾远",
     "heming": "赫明",
     "shoushan": "守山",
+    "xiangai": "祥霭分身",
 }
 
 
