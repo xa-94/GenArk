@@ -241,6 +241,27 @@ def main():
 
     sub.add_parser("verify-cross-mentions", help="交叉验证 @ 消息一致性")
 
+    # ── query 子命令 ──
+    p_query = sub.add_parser("query", help="查询 GenArk 数据（learnings/日报/状态）")
+    p_query.add_argument("--no-color", action="store_true", help="关闭 ANSI 颜色")
+    p_query_sub = p_query.add_subparsers(dest="query_command")
+
+    p = p_query_sub.add_parser("agent", help="Agent 状态摘要")
+    p.add_argument("name", help="Agent 名称（guyuan/heming/shoushan）")
+
+    p = p_query_sub.add_parser("learnings", help="搜索 learnings")
+    p.add_argument("keyword", help="搜索关键词")
+
+    p = p_query_sub.add_parser("daily", help="查看日报")
+    p.add_argument("--date", help="日期 YYYY-MM-DD（默认今天）")
+
+    p = p_query_sub.add_parser("recent", help="最近团队动态")
+    p.add_argument("--days", type=int, default=3, help="天数（默认 3）")
+
+    p_query_sub.add_parser("decisions", help="最近决策")
+    p_query_sub.add_parser("me", help="自我审视")
+    p_query_sub.add_parser("inject", help="读取待注入 learnings")
+
     args = parser.parse_args()
 
     commands = {
@@ -259,6 +280,29 @@ def main():
     fn = commands.get(args.command)
     if fn:
         fn(args)
+    elif args.command == "query":
+        from .query.agent import cmd_query_agent
+        from .query.learnings import cmd_query_learnings
+        from .query.daily import cmd_query_daily
+        from .query.recent import cmd_query_recent
+        from .query.decisions import cmd_query_decisions
+        from .query.me import cmd_query_me
+        from .query.inject import cmd_query_inject
+
+        query_handlers = {
+            "agent": cmd_query_agent,
+            "learnings": cmd_query_learnings,
+            "daily": cmd_query_daily,
+            "recent": cmd_query_recent,
+            "decisions": cmd_query_decisions,
+            "me": cmd_query_me,
+            "inject": cmd_query_inject,
+        }
+        handler = query_handlers.get(getattr(args, "query_command", None))
+        if handler:
+            handler(args)
+        else:
+            p_query.print_help()
     else:
         parser.print_help()
 

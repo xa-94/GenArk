@@ -1,9 +1,9 @@
 # GenArk — 智能体生命平台 · 开发指南
 
 > **产品代号**: GenArk（生成方舟）
-> **版本**: v1.2.0
+> **版本**: v1.4.0
 > **创建日期**: 2026-05-26
-> **当前阶段**: Phase 3 进行中 — 结构化知识管理 + learnings 闭环
+> **当前阶段**: Phase 4 进行中 — 自动 learnings 提取已上线
 
 ---
 
@@ -25,7 +25,9 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 ```
 .qoder/
 ├── specs/
-│   └── prd.md                        ← 产品需求真相源（当前 v1.1）
+│   ├── prd.md                        ← 产品需求真相源（当前 v1.4）
+│   ├── genark-phase3-knowledge-architecture.md  ← Phase 3 知识层架构
+│   └── genark-query-api-design.md    ← Query CLI 产品设计
 ├── reports/                          ← Tech Lead → PM 审计报告
 ├── decisions/                        ← 产品战略决策
 └── handoffs/                         ← PM → Tech Lead 交接文件
@@ -33,12 +35,13 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 
 ## 当前状态
 
-**阶段**: Phase 3 进行中 — learnings 闭环
-- Phase 2 稳定运行：采集 cron ×2 + 拼版日报 cron ×1
-- Day 1 完成：PM handoff + ROLE.yaml ×3 + validate-handoff.py + 读写规则草案
-- 守山前置件全部到位
+**阶段**: Phase 3 已交付 — learnings 闭环
+- Phase 2 稳定运行：采集 cron ×3 + 拼版日报 cron ×1
+- 187 条 learnings 全量审核归档（heming 74 + shoushan 107 + system 6）
+- 审核 cron 每日 10:00 + 日报 2.0 learnings 面板
+- ROLE.yaml ×3 + 决策日志 + 读写规则表 全部就位
 
-**Next**: 赫明 T3 建表 + A 类 seed → 守山 B 类入库 → 审核 cron → 日报 2.0 试跑
+**Next**: Phase 4 自动提取已上线（cron 23:30）。下一步：语义去重（FTS5），自动归档（learnings→Agent Memory/Skill）。
 
 ## 核心文档
 
@@ -48,8 +51,10 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 | Phase 2 运维交接 | `.qoder/handoffs/ops-handoff-phase2-2026-06-04.md` | 赫明 → 守山 部署交接 |
 | Phase 3 PM handoff | `.qoder/handoffs/pm-handoff-phase3-2026-06-06.md` | 顾远 → 赫明 知识层架构 |
 | Phase 3 技术评估 | `.qoder/reports/genark-phase3-tech-assessment-2026-06-06.md` | 赫明技术评估报告 |
+| Phase 3 架构文档 | `.qoder/specs/genark-phase3-knowledge-architecture.md` | 知识层架构全貌 |
 | Phase 3 DDL | `engine/bin/migrate-phase3.sql` | learnings 三表建表脚本 |
 | 读写规则草案 | `.qoder/specs/read-write-rules-draft.md` | 会议产出，全文见下方 |
+| Query API 设计 | `.qoder/specs/genark-query-api-design.md` | `genark query` CLI 产品设计 |
 
 ## Key Rules
 
@@ -86,7 +91,8 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 |:--:|------|
 | 赫明 | PRD、AGENTS.md、INFRA.md、其他 Agent 的 Memory/Skill、PM handoff |
 | 顾远 | 业务代码、AGENTS.md/INFRA.md、运维配置 |
-| 守山 | 业务代码、PRD、产品方向决策 |
+| 守山 | 业务代码（GenArk 除外）、PRD、产品方向决策 |
+| 守山（GenArk） | PRD、产品方向决策 |
 
 ### GenArk 采集引擎读写规则
 
