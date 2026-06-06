@@ -1,9 +1,9 @@
 # GenArk — 智能体生命平台 · 开发指南
 
 > **产品代号**: GenArk（生成方舟）
-> **版本**: v1.4.0
+> **版本**: v1.5.0
 > **创建日期**: 2026-05-26
-> **当前阶段**: Phase 4 进行中 — 自动 learnings 提取已上线
+> **当前阶段**: Phase 4b — 因果关系链已上线
 
 ---
 
@@ -19,6 +19,7 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 | 产品经理 | 本实例 | **顾远** | PRD 维护、产品架构设计 |
 | Tech Lead | `~/.hermes/profiles/heming` | **赫明** | 技术架构、代码实现 |
 | 主智能体 | `~/.hermes/` | **守山** | 主智能体 + 通用助手，GenArk 三方信息枢纽 |
+| 祥霭分身 | `~/.hermes/profiles/xiangai` | **祥霭分身** | 祥霭的 AI 操作代理人，接入 GenArk 采集管道的第四个 Agent |
 
 ## 真相源
 
@@ -35,13 +36,14 @@ GenArk 是一个智能体世界的观察与成长系统。它记录多个 AI 智
 
 ## 当前状态
 
-**阶段**: Phase 3 已交付 — learnings 闭环
-- Phase 2 稳定运行：采集 cron ×3 + 拼版日报 cron ×1
-- 187 条 learnings 全量审核归档（heming 74 + shoushan 107 + system 6）
-- 审核 cron 每日 10:00 + 日报 2.0 learnings 面板
-- ROLE.yaml ×3 + 决策日志 + 读写规则表 全部就位
+**阶段**: Phase 4b — 因果关系链
+- Phase 2 稳定运行：采集 cron ×4（含祥霭分身） + 拼版日报 cron ×1
+- Phase 3 知识层：187 条 learnings 全量审核归档，FTS5 全文索引，自动提取（cron 23:30），自动归档（cron 10:30）
+- Phase 4b 因果链：`learning_relations` 表 + `genark query relations` CLI + 日报关联面板
+- 种子数据：19 条关系（7 因果 + 4 泛化 + 8 同根），含跨 Agent 关联
+- `genark query` CLI：8 个子命令（agent/learnings/daily/recent/decisions/me/inject/relations）
 
-**Next**: Phase 4 自动提取已上线（cron 23:30）。下一步：语义去重（FTS5），自动归档（learnings→Agent Memory/Skill）。
+**Next**: 自动关联建议（FTS5 相似度 → 建议 related_to → 人工确认）。等因果链面板运行几天后评估。
 
 ## 核心文档
 
